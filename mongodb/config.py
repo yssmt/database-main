@@ -37,12 +37,12 @@ def get_database():
     Get database instance
     
     Returns:
-        Database: MongoDB database instance
+        (MongoClient, Database): Tuple of MongoDB client and database instance
     """
     client = get_mongo_client()
     db = client[DB_NAME]
     print(f"✓ Using database: {DB_NAME}")
-    return db
+    return client, db  # <-- MODIFIED: Return both client and db
 
 def close_connection(client):
     """
