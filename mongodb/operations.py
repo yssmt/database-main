@@ -6,12 +6,14 @@ Real Estate Listing Database
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from config import get_database
+from bson.objectid import ObjectId  # <-- ADDED: For converting string IDs to ObjectIds
+from pymongo.errors import PyMongoError # <-- ADDED: For transactions
 
 class DatabaseOperations:
     """Class containing all database CRUD operations"""
     
     def __init__(self):
-        self.db = get_database()
+        self.client, self.db = get_database() # <-- MODIFIED: Store client for transactions
     
     # ==================== USER OPERATIONS ====================
     
@@ -60,27 +62,55 @@ class DatabaseOperations:
         property_data['updated_at'] = datetime.utcnow()
         
         # Initialize price history
-        if 'price_history' not in property_data:
+        if 'price_history' not in property_data and 'current_price' in property_data:
             property_data['price_history'] = [{
                 'price': property_data['current_price'],
                 'changed_at': datetime.utcnow(),
                 'reason': 'Initial listing'
             }]
         
+        # ADDED: Create GeoJSON object (Suggestion 1)
+        if 'location' in property_data and 'latitude' in property_data['location'] and 'longitude' in property_data['location']:
+            property_data['location']['geo'] = {
+                'type': 'Point',
+                'coordinates': [
+                    property_data['location']['longitude'], # Longitude first
+                    property_data['location']['latitude']   # Latitude second
+                ]
+            }
+
         result = self.db.properties.insert_one(property_data)
         property_data['_id'] = result.inserted_id
         return property_data
     
     def get_property_by_id(self, property_id: str) -> Optional[Dict[str, Any]]:
         """Get property by ID"""
-        return self.db.properties.find_one({"property_id": property_id})
+        return self.db.properties.find_one({"_id": ObjectId(property_id)}) # <-- MODIFIED: Use _id and ObjectId
     
     def search_properties(self, filters: Dict[str, Any], limit: int = 100) -> List[Dict[str, Any]]:
         """
         Search properties with filters
         Filters can include: property_type, min_price, max_price, city, bedrooms, etc.
+        NEW: search_term (full-text), near_lon, near_lat, max_dist_meters (geospatial)
         """
         query = {}
+        
+        # ADDED: Full-text search (Suggestion 5)
+        if 'search_term' in filters:
+            query['$text'] = { '$search': filters['search_term'] }
+            
+        # ADDED: Geospatial search (Suggestion 1)
+        if 'near_lon' in filters and 'near_lat' in filters:
+            query['location.geo'] = {
+                '$near': {
+                    '$geometry': {
+                        'type': "Point",
+                        'coordinates': [filters['near_lon'], filters['near_lat']]
+                    },
+                    # Default to 10km search if not specified
+                    '$maxDistance': filters.get('max_dist_meters', 10000) 
+                }
+            }
         
         # Property type filter
         if 'property_type' in filters:
@@ -114,10 +144,11 @@ class DatabaseOperations:
         
         # Handle price change - add to price history
         if 'current_price' in update_data:
-            property = self.get_property_by_id(property_id)
+            # Need to convert ID to ObjectId for the query
+            property = self.get_property_by_id(property_id) 
             if property and property['current_price'] != update_data['current_price']:
                 self.db.properties.update_one(
-                    {"property_id": property_id},
+                    {"_id": ObjectId(property_id)}, # <-- MODIFIED
                     {"$push": {
                         "price_history": {
                             "price": update_data['current_price'],
@@ -127,15 +158,25 @@ class DatabaseOperations:
                     }}
                 )
         
+        # ADDED: Update GeoJSON object if location changes
+        if 'location' in update_data and 'latitude' in update_data['location'] and 'longitude' in update_data['location']:
+            update_data['location']['geo'] = {
+                'type': 'Point',
+                'coordinates': [
+                    update_data['location']['longitude'], # Longitude first
+                    update_data['location']['latitude']   # Latitude second
+                ]
+            }
+
         result = self.db.properties.update_one(
-            {"property_id": property_id},
+            {"_id": ObjectId(property_id)}, # <-- MODIFIED
             {"$set": update_data}
         )
         return result.modified_count > 0
     
     def delete_property(self, property_id: str) -> bool:
         """Delete a property"""
-        result = self.db.properties.delete_one({"property_id": property_id})
+        result = self.db.properties.delete_one({"_id": ObjectId(property_id)}) # <-- MODIFIED
         return result.deleted_count > 0
     
     # ==================== LISTING OPERATIONS ====================
@@ -147,6 +188,10 @@ class DatabaseOperations:
         listing_data.setdefault('status', 'pending')
         listing_data.setdefault('views_count', 0)
         
+        # Convert string ID to ObjectId if needed
+        if 'property_id' in listing_data and isinstance(listing_data['property_id'], str):
+            listing_data['property_id'] = ObjectId(listing_data['property_id'])
+
         result = self.db.listings.insert_one(listing_data)
         listing_data['_id'] = result.inserted_id
         return listing_data
@@ -155,10 +200,10 @@ class DatabaseOperations:
         """Get listing by ID (optionally increment view count)"""
         if increment_view:
             self.db.listings.update_one(
-                {"listing_id": listing_id},
+                {"_id": ObjectId(listing_id)}, # <-- MODIFIED
                 {"$inc": {"views_count": 1}}
             )
-        return self.db.listings.find_one({"listing_id": listing_id})
+        return self.db.listings.find_one({"_id": ObjectId(listing_id)}) # <-- MODIFIED
     
     def get_listings_by_status(self, status: str, limit: int = 100) -> List[Dict[str, Any]]:
         """Get listings by status"""
@@ -177,14 +222,14 @@ class DatabaseOperations:
             update_data['verified_at'] = datetime.utcnow()
         
         result = self.db.listings.update_one(
-            {"listing_id": listing_id},
+            {"_id": ObjectId(listing_id)}, # <-- MODIFIED
             {"$set": update_data}
         )
         return result.modified_count > 0
     
     def delete_listing(self, listing_id: str) -> bool:
         """Delete a listing"""
-        result = self.db.listings.delete_one({"listing_id": listing_id})
+        result = self.db.listings.delete_one({"_id": ObjectId(listing_id)}) # <-- MODIFIED
         return result.deleted_count > 0
     
     # ==================== VERIFICATION DOCUMENT OPERATIONS ====================
@@ -200,30 +245,54 @@ class DatabaseOperations:
     
     def verify_document(self, document_id: str, admin_uid: str, status: str, rejection_reason: str = None) -> bool:
         """Verify or reject a document"""
-        update_data = {
-            'status': status,
-            'verified_by_admin_uid': admin_uid,
-            'verified_at': datetime.utcnow()
-        }
         
-        if rejection_reason:
-            update_data['rejection_reason'] = rejection_reason
-        
-        result = self.db.verification_documents.update_one(
-            {"document_id": document_id},
-            {"$set": update_data}
-        )
-        
-        # If identity proof is verified, update user status
-        if status == 'verified':
-            doc = self.db.verification_documents.find_one({"document_id": document_id})
-            if doc and doc['document_type'] == 'identity_proof':
-                self.db.users.update_one(
-                    {"firebase_uid": doc['user_firebase_uid']},
-                    {"$set": {"verification_status": "verified"}}
-                )
-        
-        return result.modified_count > 0
+        # MODIFIED: Implement Transaction (Suggestion 3)
+        try:
+            with self.client.start_session() as session:
+                with session.with_transaction():
+                    update_data = {
+                        'status': status,
+                        'verified_by_admin_uid': admin_uid,
+                        'verified_at': datetime.utcnow()
+                    }
+                    
+                    if rejection_reason:
+                        update_data['rejection_reason'] = rejection_reason
+                    
+                    result = self.db.verification_documents.update_one(
+                        {"_id": ObjectId(document_id)}, # <-- MODIFIED
+                        {"$set": update_data},
+                        session=session # Add session
+                    )
+                    
+                    if result.modified_count == 0:
+                        # Abort if document not found or already updated
+                        raise PyMongoError(f"Document {document_id} not found or not modified.")
+
+                    # If identity proof is verified, update user status
+                    if status == 'verified':
+                        doc = self.db.verification_documents.find_one(
+                            {"_id": ObjectId(document_id)}, # <-- MODIFIED
+                            session=session # Add session
+                        )
+                        if doc and doc['document_type'] == 'identity_proof':
+                            user_update_result = self.db.users.update_one(
+                                {"firebase_uid": doc['user_firebase_uid']},
+                                {"$set": {"verification_status": "verified"}},
+                                session=session # Add session
+                            )
+                            if user_update_result.modified_count == 0:
+                                # This is tricky: maybe the user was already verified.
+                                # For this example, we'll allow it, but in production
+                                # you might want to check if the user exists.
+                                pass 
+            
+            print("✓ Transaction successful: Document and User updated.")
+            return True
+            
+        except PyMongoError as e:
+            print(f"✗ Transaction failed: {e}")
+            return False
     
     def get_pending_verifications(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Get all pending verification documents"""
@@ -233,19 +302,21 @@ class DatabaseOperations:
     
     def save_listing(self, user_firebase_uid: str, listing_id: str, notes: str = None) -> Dict[str, Any]:
         """Save a listing for a user"""
+        listing_obj_id = ObjectId(listing_id) # <-- MODIFIED
+        
         # Check if already saved
         existing = self.db.saved_listings.find_one({
             "user_firebase_uid": user_firebase_uid,
-            "listing_id": listing_id
+            "listing_id": listing_obj_id # <-- MODIFIED
         })
         
         if existing:
             return existing
         
         saved_data = {
-            "saved_id": f"saved_{user_firebase_uid}_{listing_id}_{int(datetime.utcnow().timestamp())}",
+            # "saved_id": ..., # <-- REMOVED (using _id)
             "user_firebase_uid": user_firebase_uid,
-            "listing_id": listing_id,
+            "listing_id": listing_obj_id, # <-- MODIFIED
             "notes": notes,
             "saved_at": datetime.utcnow()
         }
@@ -260,7 +331,7 @@ class DatabaseOperations:
     
     def remove_saved_listing(self, saved_id: str) -> bool:
         """Remove a saved listing"""
-        result = self.db.saved_listings.delete_one({"saved_id": saved_id})
+        result = self.db.saved_listings.delete_one({"_id": ObjectId(saved_id)}) # <-- MODIFIED
         return result.deleted_count > 0
     
     # ==================== NOTIFICATION OPERATIONS ====================
@@ -287,7 +358,7 @@ class DatabaseOperations:
     def mark_notification_read(self, notification_id: str) -> bool:
         """Mark notification as read"""
         result = self.db.notifications.update_one(
-            {"notification_id": notification_id},
+            {"_id": ObjectId(notification_id)}, # <-- MODIFIED
             {"$set": {"is_read": True}}
         )
         return result.modified_count > 0
