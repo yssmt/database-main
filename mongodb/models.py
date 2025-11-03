@@ -37,6 +37,7 @@ class PropertyType:
 # Collection Schemas (for reference)
 COLLECTIONS_SCHEMA = {
     "users": {
+        "_id": "ObjectId (PK)",
         "firebase_uid": "string (unique)",
         "email": "string",
         "name": "string",
@@ -52,7 +53,7 @@ COLLECTIONS_SCHEMA = {
     },
     
     "properties": {
-        "property_id": "string (unique)",
+        "_id": "ObjectId (PK)",
         "title": "string",
         "description": "string",
         "property_type": "string (residential|commercial|land|rental)",
@@ -70,8 +71,10 @@ COLLECTIONS_SCHEMA = {
             "state": "string",
             "zip_code": "string",
             "country": "string",
-            "latitude": "float (optional)",
-            "longitude": "float (optional)"
+            "geo": {  # For 2dsphere index
+                "type": "string ('Point')",
+                "coordinates": "[longitude, latitude]"
+            }
         },
         "bedrooms": "int (optional)",
         "bathrooms": "float (optional)",
@@ -86,9 +89,9 @@ COLLECTIONS_SCHEMA = {
     },
     
     "listings": {
-        "listing_id": "string (unique)",
-        "property_id": "string",
-        "lister_firebase_uid": "string",
+        "_id": "ObjectId (PK)",
+        "property_id": "ObjectId", # References properties._id
+        "lister_firebase_uid": "string", # References users.firebase_uid
         "status": "string (active|hidden|pending|verified|rejected|expired)",
         "views_count": "int",
         "verified_at": "datetime (optional)",
@@ -100,8 +103,8 @@ COLLECTIONS_SCHEMA = {
     },
     
     "verification_documents": {
-        "document_id": "string (unique)",
-        "user_firebase_uid": "string",
+        "_id": "ObjectId (PK)",
+        "user_firebase_uid": "string", # References users.firebase_uid
         "document_type": "string",
         "document_url": "string",
         "status": "string (pending|verified|rejected)",
@@ -112,25 +115,25 @@ COLLECTIONS_SCHEMA = {
     },
     
     "saved_listings": {
-        "saved_id": "string (unique)",
-        "user_firebase_uid": "string",
-        "listing_id": "string",
+        "_id": "ObjectId (PK)",
+        "user_firebase_uid": "string", # References users.firebase_uid
+        "listing_id": "ObjectId", # References listings._id
         "notes": "string (optional)",
         "saved_at": "datetime"
     },
     
     "property_comparisons": {
-        "comparison_id": "string (unique)",
-        "user_firebase_uid": "string",
-        "property_ids": ["string"],
+        "_id": "ObjectId (PK)",
+        "user_firebase_uid": "string", # References users.firebase_uid
+        "property_ids": ["ObjectId"], # References properties._id
         "created_at": "datetime"
     },
     
     "reviews": {
-        "review_id": "string (unique)",
-        "reviewer_firebase_uid": "string",
+        "_id": "ObjectId (PK)",
+        "reviewer_firebase_uid": "string", # References users.firebase_uid
         "target_type": "string (property|lister)",
-        "target_id": "string",
+        "target_id": "string", # Can be ObjectId (property) or string (firebase_uid)
         "rating": "float (1-5)",
         "comment": "string",
         "created_at": "datetime",
@@ -138,7 +141,7 @@ COLLECTIONS_SCHEMA = {
     },
     
     "notifications": {
-        "notification_id": "string (unique)",
+        "_id": "ObjectId (PK)",
         "user_firebase_uid": "string (optional, null for broadcast)",
         "title": "string",
         "message": "string",
@@ -148,7 +151,7 @@ COLLECTIONS_SCHEMA = {
     },
     
     "audit_logs": {
-        "log_id": "string (unique)",
+        "_id": "ObjectId (PK)",
         "user_firebase_uid": "string (optional)",
         "action": "string",
         "resource_type": "string (optional)",
