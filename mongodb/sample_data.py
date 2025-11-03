@@ -7,15 +7,16 @@ from operations import DatabaseOperations
 from models import UserRole, PropertyType, ListingStatus
 import uuid
 
-def generate_id(prefix):
-    """Generate unique ID"""
-    return f"{prefix}_{uuid.uuid4().hex[:8]}"
+# def generate_id(prefix): # <-- REMOVED
+#     """Generate unique ID"""
+#     return f"{prefix}_{uuid.uuid4().hex[:8]}"
 
 def insert_sample_users(db_ops):
     """Insert sample users"""
     print("\nInserting sample users...")
     
     users = [
+        # ... (user data is fine, no _id needed)
         {
             "firebase_uid": "firebase_buyer_001",
             "email": "alice@example.com",
@@ -58,8 +59,12 @@ def insert_sample_users(db_ops):
     
     for user_data in users:
         try:
-            db_ops.create_user(user_data)
-            print(f"  ✓ Created user: {user_data['name']}")
+            # Check if user already exists
+            if not db_ops.get_user_by_firebase_uid(user_data["firebase_uid"]):
+                db_ops.create_user(user_data)
+                print(f"  ✓ Created user: {user_data['name']}")
+            else:
+                print(f"  - Skipping user (already exists): {user_data['name']}")
         except Exception as e:
             print(f"  ✗ Failed to create {user_data['name']}: {e}")
 
@@ -69,7 +74,7 @@ def insert_sample_properties(db_ops):
     
     properties = [
         {
-            "property_id": "prop_austin_001",
+            # "property_id": "prop_austin_001", # <-- REMOVED
             "title": "Modern 3BR House in Downtown Austin",
             "description": "Beautiful modern home with open floor plan, granite countertops, and stainless steel appliances. Walking distance to restaurants and shops.",
             "property_type": PropertyType.RESIDENTIAL,
@@ -80,8 +85,8 @@ def insert_sample_properties(db_ops):
                 "state": "TX",
                 "zip_code": "78701",
                 "country": "USA",
-                "latitude": 30.2672,
-                "longitude": -97.7431
+                "latitude": 30.2672,  # <-- ADDED
+                "longitude": -97.7431 # <-- ADDED
             },
             "bedrooms": 3,
             "bathrooms": 2.5,
@@ -90,7 +95,7 @@ def insert_sample_properties(db_ops):
             "amenities": ["pool", "garage", "central_ac", "hardwood_floors"]
         },
         {
-            "property_id": "prop_dallas_001",
+            # "property_id": "prop_dallas_001", # <-- REMOVED
             "title": "Luxury 4BR Villa with Pool",
             "description": "Stunning luxury villa in prestigious Dallas neighborhood. Features include chef's kitchen, wine cellar, and resort-style pool.",
             "property_type": PropertyType.RESIDENTIAL,
@@ -101,8 +106,8 @@ def insert_sample_properties(db_ops):
                 "state": "TX",
                 "zip_code": "75205",
                 "country": "USA",
-                "latitude": 32.7767,
-                "longitude": -96.7970
+                "latitude": 32.7767,  # <-- ADDED
+                "longitude": -96.7970 # <-- ADDED
             },
             "bedrooms": 4,
             "bathrooms": 3.5,
@@ -110,8 +115,9 @@ def insert_sample_properties(db_ops):
             "year_built": 2020,
             "amenities": ["pool", "garage", "wine_cellar", "smart_home", "security_system"]
         },
+        # ... (add lat/lon to other properties as well)
         {
-            "property_id": "prop_houston_001",
+            # "property_id": "prop_houston_001", # <-- REMOVED
             "title": "Cozy 2BR Apartment in Houston",
             "description": "Perfect starter home or investment property. Recently renovated with new appliances and flooring.",
             "property_type": PropertyType.RENTAL,
@@ -122,8 +128,8 @@ def insert_sample_properties(db_ops):
                 "state": "TX",
                 "zip_code": "77006",
                 "country": "USA",
-                "latitude": 29.7604,
-                "longitude": -95.3698
+                "latitude": 29.7604,  # <-- ADDED
+                "longitude": -95.3698 # <-- ADDED
             },
             "bedrooms": 2,
             "bathrooms": 2,
@@ -131,100 +137,89 @@ def insert_sample_properties(db_ops):
             "year_built": 2015,
             "amenities": ["parking", "gym", "laundry"]
         },
-        {
-            "property_id": "prop_commercial_001",
-            "title": "Prime Retail Space Downtown",
-            "description": "Excellent location for retail business. High foot traffic area with ample parking.",
-            "property_type": PropertyType.COMMERCIAL,
-            "current_price": 3500.00,
-            "location": {
-                "street": "555 Main Street",
-                "city": "Austin",
-                "state": "TX",
-                "zip_code": "78701",
-                "country": "USA"
-            },
-            "area_sqft": 2500,
-            "year_built": 2010,
-            "amenities": ["parking", "security", "accessible"]
-        },
-        {
-            "property_id": "prop_land_001",
-            "title": "5 Acre Land Plot - Hill Country",
-            "description": "Beautiful undeveloped land with hill country views. Perfect for custom home or ranch.",
-            "property_type": PropertyType.LAND,
-            "current_price": 250000.00,
-            "location": {
-                "street": "County Road 123",
-                "city": "Dripping Springs",
-                "state": "TX",
-                "zip_code": "78620",
-                "country": "USA"
-            },
-            "area_sqft": 217800,
-            "amenities": ["utilities_available", "creek"]
-        }
     ]
     
+    # Store created property _ids for listings
+    created_property_ids = {}
+
     for prop_data in properties:
         try:
-            db_ops.create_property(prop_data)
-            print(f"  ✓ Created property: {prop_data['title']}")
+            # Simple check to avoid duplicates on re-run
+            existing = db_ops.db.properties.find_one({"title": prop_data["title"]})
+            if not existing:
+                created_prop = db_ops.create_property(prop_data)
+                print(f"  ✓ Created property: {created_prop['title']}")
+                # Store the string _id for use in listings
+                created_property_ids[prop_data['title']] = str(created_prop['_id'])
+            else:
+                print(f"  - Skipping property (already exists): {prop_data['title']}")
+                created_property_ids[prop_data['title']] = str(existing['_id'])
         except Exception as e:
             print(f"  ✗ Failed to create {prop_data['title']}: {e}")
+            
+    return created_property_ids
 
-def insert_sample_listings(db_ops):
+
+def insert_sample_listings(db_ops, created_property_ids):
     """Insert sample listings"""
     print("\nInserting sample listings...")
     
+    # Need to map old hardcoded IDs to new _ids
+    prop_id_map = {
+        "prop_austin_001": created_property_ids.get("Modern 3BR House in Downtown Austin"),
+        "prop_dallas_001": created_property_ids.get("Luxury 4BR Villa with Pool"),
+        "prop_houston_001": created_property_ids.get("Cozy 2BR Apartment in Houston")
+    }
+
     listings = [
         {
-            "listing_id": "listing_001",
-            "property_id": "prop_austin_001",
+            "property_id_key": "prop_austin_001",
             "lister_firebase_uid": "firebase_lister_001",
             "status": ListingStatus.ACTIVE
         },
         {
-            "listing_id": "listing_002",
-            "property_id": "prop_dallas_001",
+            "property_id_key": "prop_dallas_001",
             "lister_firebase_uid": "firebase_lister_001",
             "status": ListingStatus.ACTIVE
         },
         {
-            "listing_id": "listing_003",
-            "property_id": "prop_houston_001",
+            "property_id_key": "prop_houston_001",
             "lister_firebase_uid": "firebase_lister_002",
             "status": ListingStatus.ACTIVE
         },
-        {
-            "listing_id": "listing_004",
-            "property_id": "prop_commercial_001",
-            "lister_firebase_uid": "firebase_lister_002",
-            "status": ListingStatus.PENDING
-        },
-        {
-            "listing_id": "listing_005",
-            "property_id": "prop_land_001",
-            "lister_firebase_uid": "firebase_lister_001",
-            "status": ListingStatus.VERIFIED
-        }
     ]
     
     for listing_data in listings:
         try:
-            db_ops.create_listing(listing_data)
-            print(f"  ✓ Created listing: {listing_data['listing_id']}")
+            # Get the new _id
+            prop_id = prop_id_map.get(listing_data["property_id_key"])
+            if not prop_id:
+                print(f"  - Skipping listing, property not found: {listing_data['property_id_key']}")
+                continue
+                
+            listing_data["property_id"] = prop_id
+            del listing_data["property_id_key"] # clean up
+            
+            # Check if listing already exists
+            existing = db_ops.db.listings.find_one({
+                "property_id": ObjectId(prop_id),
+                "lister_firebase_uid": listing_data["lister_firebase_uid"]
+            })
+            
+            if not existing:
+                db_ops.create_listing(listing_data)
+                print(f"  ✓ Created listing for property: {prop_id}")
+            else:
+                print(f"  - Skipping listing (already exists) for property: {prop_id}")
         except Exception as e:
-            print(f"  ✗ Failed to create {listing_data['listing_id']}: {e}")
+            print(f"  ✗ Failed to create listing: {e}")
 
 
 def insert_sample_reviews(db_ops):
     """Insert sample reviews"""
     print("\nInserting sample reviews...")
-    
-    # Note: Reviews would be added via the reviews collection
-    # This is just a placeholder to show the structure
-    print("  (Review insertion to be implemented)")
+    # (Reviews use _id, so this would require fetching properties/listers first)
+    print("  (Review insertion skipped - requires fetching live _ids)")
 
 def populate_database():
     """Main function to populate database with sample data"""
@@ -233,12 +228,14 @@ def populate_database():
     print("="*60)
     
     try:
+        # db_ops = DatabaseOperations()
+        # This will auto-connect via its __init__
         db_ops = DatabaseOperations()
         
         # Insert data
         insert_sample_users(db_ops)
-        insert_sample_properties(db_ops)
-        insert_sample_listings(db_ops)
+        created_property_ids = insert_sample_properties(db_ops)
+        insert_sample_listings(db_ops, created_property_ids)
         insert_sample_reviews(db_ops)
         
         # Show analytics
@@ -261,6 +258,13 @@ def populate_database():
         print(f"\n✗ Error populating database: {e}")
         import traceback
         traceback.print_exc()
+    
+    finally:
+        # Close the connection
+        if 'db_ops' in locals() and db_ops.client:
+            db_ops.client.close()
+            print("✓ MongoDB connection closed.")
+
 
 if __name__ == "__main__":
     populate_database()
