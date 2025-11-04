@@ -295,39 +295,6 @@ Database has a unique index on `(user + listing)` combo → Users can't accident
 
 ---
 
-### Collection 8: MESSAGES 💬
-**What it stores:** Internal messaging between users (buyer ↔ lister)
-
-**Real-world analogy:** Like Facebook Messenger, but only for your platform
-
-**Why needed?** 
-Your project mentions "Communication Facilitation" - buyers can contact listers privately!
-
-**Fields:**
-```javascript
-{
-  message_id: "msg-001",
-  sender_firebase_uid: "john123",      // Who sent it?
-  receiver_firebase_uid: "jane123",    // Who receives it?
-  listing_id: "listing-001",           // Context: which property? (optional)
-  subject: "Is this available?",       // Subject line (optional)
-  content: "Hi Jane, I'm interested...", // Message body
-  status: "read",                      // unread/read
-  sent_at: "2025-01-20...",
-  read_at: "2025-01-20..."             // When was it read?
-}
-```
-
-**Example Use Case:**
-- John wants to ask about a property
-- He sends: `POST /api/messages` (sender: john, receiver: jane)
-- Jane gets notified
-- Jane checks: `GET /api/messages?user_firebase_uid=jane123&conversation_with=john123`
-- Jane replies: `POST /api/messages` (sender: jane, receiver: john)
-- Creates a conversation thread!
-
----
-
 ### Collection 9: NOTIFICATIONS 🔔
 **What it stores:** Alerts and announcements for users
 
@@ -420,7 +387,6 @@ USER (john123)
   │
   ├─► Creates → REVIEWS (reviews properties/listers)
   │
-  ├─► Sends → MESSAGES (contacts listers)
   │
   ├─► Receives → NOTIFICATIONS (gets alerts)
   │
@@ -434,8 +400,6 @@ USER (jane123) - Lister Role
   ├─► Creates → LISTINGS (makes properties visible)
   │
   ├─► Uploads → VERIFICATION_DOCUMENTS (proves identity)
-  │
-  ├─► Sends → MESSAGES (replies to buyers)
   │
   └─► Receives → NOTIFICATIONS (listing approved!)
 
@@ -549,72 +513,7 @@ GET /api/notifications?user_firebase_uid=john123
 
 ---
 
-### Feature 6: Message Threading
-**What:** See full conversation between two people
-
-**How it works:**
-```javascript
-// Get all messages between John and Jane:
-GET /api/messages?user_firebase_uid=john123&conversation_with=jane123
-
-// Returns messages where:
-// (sender=john AND receiver=jane) OR (sender=jane AND receiver=john)
-```
-
-**Why useful:** WhatsApp-style conversation view
-
----
-
-## 🎮 Part 4: Complete User Journeys
-
-### Journey 1: Buyer Finds a Property
-```
-1. John signs up via Firebase → Gets firebase_uid
-2. POST /api/users (create MongoDB profile)
-3. GET /api/properties?city=Austin&max_price=500000 (search)
-4. POST /api/audit-logs (track search)
-5. GET /api/listings/listing-001 (view property) → views_count++
-6. POST /api/saved-listings (bookmark it)
-7. POST /api/comparisons (compare with 2 others)
-8. POST /api/messages (contact lister Jane)
-9. Jane replies → John gets notification
-10. After visiting: POST /api/reviews (rate property 4.5 stars)
-```
-
----
-
-### Journey 2: Lister Creates & Publishes Listing
-```
-1. Jane signs up as "lister" role
-2. POST /api/verification-documents (upload ID) → status: pending
-3. Admin verifies → Jane's profile automatically becomes "verified"
-4. POST /api/properties (create property) → prop-001
-5. POST /api/listings (create listing) → status: pending
-6. Admin approves → PUT /api/listings/listing-001 → status: verified
-7. Jane gets notification: "Your listing is live!"
-8. Buyers start viewing → views_count increases
-9. John messages Jane → Jane receives notification
-10. GET /api/messages (Jane reads & replies)
-```
-
----
-
-### Journey 3: Admin Moderation
-```
-1. GET /api/listings?status=pending (see pending listings)
-2. GET /api/verification-documents?status=pending (see pending IDs)
-3. Review Jane's ID document
-4. PUT /api/verification-documents/doc-001/verify (approve)
-   → Jane's user.verification_status = "verified" (auto)
-5. PUT /api/listings/listing-001 (status="verified")
-6. POST /api/notifications (notify Jane)
-7. GET /api/admin/analytics (check platform stats)
-8. If fraud detected: PUT /api/admin/users/baduser/ban
-```
-
----
-
-## 📊 Part 5: Performance & Indexing
+## 📊 Part 4: Performance & Indexing
 
 **What are indexes?** Think of them as a book's index page - helps find things FAST!
 
@@ -643,113 +542,3 @@ GET /api/messages?user_firebase_uid=john123&conversation_with=jane123
 **With indexes:** Search 10,000 properties = instant ⚡
 
 ---
-
-## 🧪 Part 6: What's Been Tested
-
-All APIs tested successfully with real data:
-
-✅ Created buyer user (john)  
-✅ Created lister user (jane)  
-✅ Created property with price $450,000  
-✅ Updated price to $425,000 → Price history tracked!  
-✅ Created listing → Status: pending  
-✅ Saved listing for buyer → Can retrieve it  
-✅ Posted review (4.5 stars)  
-✅ Searched properties by city → Works!  
-✅ Got analytics → Shows counts  
-
-**Everything is working and ready to use!**
-
----
-
-## 📚 Part 7: What Each API Endpoint Does
-
-### User Management
-```
-POST /api/users                      Create new user
-GET /api/users/{firebase_uid}        Get user profile
-PUT /api/users/{firebase_uid}        Update profile (name, phone, etc.)
-GET /api/users?role=buyer            List all buyers
-```
-
-### Property Management
-```
-POST /api/properties                 Create property
-GET /api/properties/{property_id}    Get property details
-PUT /api/properties/{property_id}    Update (auto price history!)
-GET /api/properties?city=Austin      Search properties
-DELETE /api/properties/{property_id} Delete property
-```
-
-### Listing Management
-```
-POST /api/listings                   Create listing
-GET /api/listings/{listing_id}       View listing (view_count++)
-PUT /api/listings/{listing_id}       Update status
-GET /api/listings?status=active      Filter listings
-```
-
-### Verification
-```
-POST /api/verification-documents     Upload document
-GET /api/verification-documents/{id} Get document
-PUT /api/verification-documents/{id}/verify  Admin verify
-```
-
-### User Actions
-```
-POST /api/saved-listings             Save property
-GET /api/saved-listings?user_firebase_uid=x
-DELETE /api/saved-listings/{id}
-
-POST /api/comparisons                Compare properties
-GET /api/comparisons?user_firebase_uid=x
-
-POST /api/reviews                    Post review
-GET /api/reviews?target_id=prop-001  Get reviews
-
-POST /api/messages                   Send message
-GET /api/messages?user_firebase_uid=x&conversation_with=y
-PUT /api/messages/{id}/read          Mark as read
-
-GET /api/notifications?user_firebase_uid=x
-PUT /api/notifications/{id}/read
-```
-
-### Admin
-```
-PUT /api/admin/users/{uid}/suspend   Suspend user
-PUT /api/admin/users/{uid}/ban       Ban user
-GET /api/admin/analytics             Get stats
-```
-
-### Audit
-```
-POST /api/audit-logs                 Track activity
-GET /api/audit-logs?user_firebase_uid=x
-```
-
----
-
-## 🎓 Summary: You Now Have...
-
-✅ **10 Collections** storing all data types  
-✅ **40+ API Endpoints** for every operation  
-✅ **Automatic Features** (price history, view counter, verification)  
-✅ **Performance Indexes** for fast queries  
-✅ **Firebase Integration** (no password storage needed)  
-✅ **Complete Workflows** (buyer journey, lister journey, admin moderation)  
-✅ **Security Features** (audit logs, verification, role-based access)  
-✅ **Tested & Working** (sample data successfully created)
-
----
-
-## 🤔 Next Steps
-
-1. **Integrate Firebase Auth** in your frontend (React)
-2. **Connect Frontend to APIs** (use axios/fetch to call endpoints)
-3. **Implement File Upload** (for images/documents to Firebase Storage)
-4. **Add Authentication Middleware** (verify Firebase tokens before API calls)
-5. **Build UI Components** for search, listings, messaging, etc.
-
-**You have a complete, production-ready database foundation!**
