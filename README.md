@@ -1,116 +1,42 @@
-# 🗄️ MongoDB Real Estate Database - Clean Implementation
+# MongoDB Real Estate Database
 
-This is a **production-ready MongoDB database implementation** for a real estate listing platform.
+## Overview
 
----
+This repository contains a complete and production-ready MongoDB database implementation for a real estate listing platform. It's designed to be easily integrated with a MERN stack application, providing a robust backend for user management, property listings, and more.
 
-## 🎯 What's This Project?
+## Key Features
 
-A complete MongoDB database layer with:
-- ✅ **10 Collections** (users, properties, listings, etc.)
-- ✅ **50+ CRUD Operations** 
-- ✅ **Automatic Features** (price history, view tracking, verification)
-- ✅ **Optimized Performance** (30+ indexes)
-- ✅ **Complete Documentation**
-- ✅ **Working Examples**
+- **10 Collections with Full CRUD:** Manages users, properties, listings, and more.
+- **Automatic Price History:** Tracks all price changes for a property.
+- **View Counting:** Automatically increments listing views.
+- **Verification Workflow:** Streamlines the user and document verification process.
+- **Optimized Indexes:** Ensures fast and efficient queries.
+- **Firebase Integration:** Uses Firebase UIDs for authentication.
+- **Message Threading:** Manages conversations between users.
+- **Broadcast Notifications:** Allows for system-wide announcements.
+- **Analytics:** Provides database statistics and metrics.
 
----
+## Database Schema
 
-## 🚀 Quick Start (3 Steps)
+The database consists of 10 collections:
 
-### 1. Install Dependencies
-```bash
-cd mongodb
-pip install -r requirements.txt
-```
+1.  **users:** Stores user data and roles.
+2.  **properties:** Contains detailed property information.
+3.  **listings:** Manages the lifecycle of property listings.
+4.  **verification_documents:** Stores documents for user and property verification.
+5.  **saved_listings:** Allows users to save their favorite properties.
+6.  **property_comparisons:** Enables side-by-side property comparisons.
+7.  **reviews:** Manages reviews for properties and listers.
+8.  **messages:** Facilitates internal messaging between users.
+9.  **notifications:** Handles system notifications and alerts.
+10. **audit_logs:** Tracks user activity for security and analytics.
 
-### 2. Configure Database
-```bash
-copy .env.example .env
-notepad .env
-```
-Set your MongoDB URL in `.env`
+For a detailed breakdown of each collection's schema, please refer to the `DATABASE_DOCUMENTATION.md` file. A visual representation of the schema can be found in `DATABASE_SCHEMA_VISUAL.md`.
 
-### 3. Initialize & Run
-```bash
-python init_db.py
-python examples.py
-```
+## API Reference
 
-**Done!** Your database is ready to use.
+The database is designed to be accessed through a REST API. A quick reference of the available endpoints can be found in `DATABASE_QUICK_REFERENCE.md`.
 
----
+## User Journeys
 
-## 📚 Documentation
-
-| File | Purpose |
-|------|---------|  
-| **LOCAL_SETUP_GUIDE.md** | 📖 Complete setup guide for Windows |
-| **QUICKSTART.md** | ⚡ 5-minute quick start |
-| **mongodb/README.md** | 📘 Full API documentation |
-| **PROJECT_SUMMARY.md** | 📋 Project overview |
-| **DATABASE_DOCUMENTATION.md** | 🗂️ Schema details |
-
----
-
-## 📁 Project Structure
-
-```
-database-main/
-├── mongodb/              ⭐ Main work folder
-│   ├── config.py        # Database connection
-│   ├── operations.py    # All CRUD operations
-│   ├── models.py        # Data schemas
-│   ├── init_db.py       # Setup script
-│   ├── examples.py      # Usage demos
-│   └── sample_data.py   # Test data
-│
-└── [Documentation files]
-```
-
----
-
-## 💻 Usage Example
-
-```python
-from operations import DatabaseOperations
-
-db = DatabaseOperations()
-
-# Create user
-user = db.create_user({
-    "firebase_uid": "user_001",
-    "email": "john@example.com",
-    "name": "John Doe",
-    "role": "buyer"
-})
-
-# Search properties
-properties = db.search_properties({
-    "city": "Austin",
-    "min_price": 300000,
-    "max_price": 500000
-})
-
-# Get analytics
-stats = db.get_analytics()
-```
-
----
-
-## 📖 Step-by-Step Setup
-
-**New to this?** Follow the complete guide:
-
-👉 **[LOCAL_SETUP_GUIDE.md](LOCAL_SETUP_GUIDE.md)** 👈
-
-It includes:
-- Installing MongoDB
-- Installing Python  
-- Setting up the project
-- Running examples
-- Troubleshooting common issues
-
----
-
-**Ready to build something amazing? Let's go! 🚀**
+To understand how the different parts of the database work together, refer to the user journey examples in `DATABASE_WALKTHROUGH.md`. These examples cover common scenarios like user registration, property listing creation, and property searching.

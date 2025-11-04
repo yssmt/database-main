@@ -1,0 +1,13 @@
+{
+  "name": "mongodb-database",
+  "version": "1.0.0",
+  "description": "MongoDB database for a real estate listing platform",
+  "main": "init_db.js",
+  "scripts": {
+    "start": "node init_db.js"
+  },
+  "dependencies": {
+    "mongodb": "^4.1.0",
+    "dotenv": "^10.0.0"
+  }
+}
