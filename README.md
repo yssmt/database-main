@@ -18,7 +18,7 @@ This repository contains a complete and production-ready MongoDB database implem
 
 ## Database Schema
 
-The database consists of 10 collections:
+The database uses Mongoose to define schemas for the following 10 collections:
 
 1.  **users:** Stores user data and roles.
 2.  **properties:** Contains detailed property information.
@@ -31,12 +31,13 @@ The database consists of 10 collections:
 9.  **notifications:** Handles system notifications and alerts.
 10. **audit_logs:** Tracks user activity for security and analytics.
 
-For a detailed breakdown of each collection's schema, please refer to the `DATABASE_DOCUMENTATION.md` file. A visual representation of the schema can be found in `DATABASE_SCHEMA_VISUAL.md`.
+The Mongoose models for these schemas can be found in the `mongodb/models` directory.
 
-## API Reference
+## Database Operations
 
-The database is designed to be accessed through a REST API. A quick reference of the available endpoints can be found in `DATABASE_QUICK_REFERENCE.md`.
+A comprehensive set of CRUD operations for all collections is available in the `mongodb/operations.js` file. These operations can be used to interact with the database from your application.
 
-## User Journeys
+## Data Seeding and Examples
 
-To understand how the different parts of the database work together, refer to the user journey examples in `DATABASE_WALKTHROUGH.md`. These examples cover common scenarios like user registration, property listing creation, and property searching.
+-   **`mongodb/seed.js`:** A script to populate the database with sample data.
+-   **`mongodb/examples.js`:** A script that demonstrates the usage of the database operations.

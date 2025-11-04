@@ -8,6 +8,8 @@
   },
   "dependencies": {
     "mongodb": "^4.1.0",
-    "dotenv": "^10.0.0"
+    "dotenv": "^10.0.0",
+    "mongoose": "^6.0.12",
+    "uuid": "^8.3.2"
   }
 }

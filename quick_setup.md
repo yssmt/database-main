@@ -42,6 +42,14 @@
 
     This will create all the necessary collections and indexes in your database.
 
+## Populating the Database
+
+To populate the database with sample data, run the seed script:
+
+```bash
+node seed.js
+```
+
 ## Running the Examples
 
 To see the database in action, you can run the example script:
